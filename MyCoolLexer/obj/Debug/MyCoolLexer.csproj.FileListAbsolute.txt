@@ -1,0 +1,7 @@
+D:\6SEM\mtran\MyCoolLexer\bin\Debug\MyCoolLexer.exe.config
+D:\6SEM\mtran\MyCoolLexer\bin\Debug\MyCoolLexer.exe
+D:\6SEM\mtran\MyCoolLexer\bin\Debug\MyCoolLexer.pdb
+D:\6SEM\mtran\MyCoolLexer\obj\Debug\MyCoolLexer.csproj.AssemblyReference.cache
+D:\6SEM\mtran\MyCoolLexer\obj\Debug\MyCoolLexer.csproj.CoreCompileInputs.cache
+D:\6SEM\mtran\MyCoolLexer\obj\Debug\MyCoolLexer.exe
+D:\6SEM\mtran\MyCoolLexer\obj\Debug\MyCoolLexer.pdb
