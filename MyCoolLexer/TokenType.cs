@@ -8,5 +8,6 @@
         NAME,
         NUMBER,
         SPECIAL,
+        END,
     }
 }
