@@ -1,0 +1,5 @@
+from random import randint
+
+N = 10
+a = []
+print(a)
