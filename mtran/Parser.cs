@@ -1,16 +1,98 @@
-﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace mtran
 {
+	internal class Ast
+	{
+		internal List<Statement> statements;
+	}
+
+	internal class Statement { }
+
+	internal class Import : Statement
+	{
+		internal string module;
+		internal string name;
+	}
+
+	internal class Assignment : Statement
+	{
+		internal Expression left;
+		internal Expression right;
+		internal AssignmentType type;
+	}
+
+	internal class If : Statement
+	{
+		internal Expression condition;
+	}
+
+	internal class Else : Statement { }
+
+	internal class For : Statement
+	{
+		internal Expression variable;
+		internal Expression range;
+	}
+
+	internal class While : Statement
+	{
+		internal Expression condition;
+	}
+
+	internal class Expression : Statement
+	{
+		internal Expressiontype type;
+		internal Expression left;
+		internal Expression right;
+		internal string value;
+	}
+
+	internal class FunctionCall : Expression
+	{
+		internal List<Expression> parameters;
+	}
+
+	internal enum AssignmentType
+	{
+		assignment,
+		add,
+		sub,
+		mul,
+		div,
+	}
+
+	internal enum Expressiontype
+	{
+		none,
+		name,
+		number,
+		str,
+		range,
+		arr,
+		func,
+		sub,
+		add,
+		mul,
+		div,
+		dot,
+		index,
+		less,
+		lessOrEquals,
+		greater,
+		greaterOrEquals,
+		equals,
+		or,
+		and,
+		xor,
+		not,
+	}
+
 	internal class Parser
 	{
-		List<string> names;
-		List<string> consts;
-		List<Token> tokens;
+		readonly List<string> names;
+		readonly List<string> consts;
+		readonly List<Token> tokens;
 
 		int currentTokenIndex;
 
@@ -33,35 +115,94 @@ namespace mtran
 			currentTokenIndex = 0;
 		}
 
-		internal bool Analyse()
+		internal bool Analyse(out Ast ast)
 		{
+			ast = null;
+
+			List<Statement> statements = new List<Statement>();
+
 			while (!IsEnd())
 			{
-				if (!IsStatement())
+				if (!IsStatement(out Statement statement))
 				{
 					return false;
 				}
+				statements.Add(statement);
 			}
+
+			ast = new Ast()
+			{
+				statements = statements
+			};
 
 			return true;
 		}
 
-		bool IsStatement()
+		bool IsStatement(out Statement statement)
 		{
 			int savedIndex = currentTokenIndex;
+			statement = null;
 
-			if (IsImport())
+			if (IsImport(out Import import))
 			{
+				statement = import;
+
 				return true;
 			}
 			currentTokenIndex = savedIndex;
-			if (IsEquals())
+			if (IsAssignmentStatement(out Assignment ass))
 			{
+				statement = ass;
+
 				return true;
 			}
 			currentTokenIndex = savedIndex;
-			if (IsFunctionCall())
+			if (IsCompoundStatement(out Assignment compoundAss))
 			{
+				statement = compoundAss;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsFunctionCall(out FunctionCall funcCall))
+			{
+				statement = funcCall;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsIfStatement(out If ifStatement))
+			{
+				statement = ifStatement;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsElseStatement(out Else elseStatement))
+			{
+				statement = elseStatement;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsElifStatement(out If elifStatement))
+			{
+				statement = elifStatement;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsForStatement(out For forStatement))
+			{
+				statement = forStatement;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsWhileStatement(out While whileStatement))
+			{
+				statement = whileStatement;
+
 				return true;
 			}
 			currentTokenIndex = savedIndex;
@@ -69,8 +210,10 @@ namespace mtran
 			return false;
 		}
 
-		bool IsImport()
+		bool IsImport(out Import import)
 		{
+			import = null;
+
 			if (!IsKeyword("from"))
 			{
 				return false;
@@ -88,12 +231,20 @@ namespace mtran
 				return false;
 			}
 
+			import = new Import()
+			{
+				module = libName,
+				name = funName
+			};
+
 			return true;
 		}
 
-		bool IsEquals()
+		bool IsAssignmentStatement(out Assignment ass)
 		{
-			if (!IsName(out string lhs))
+			ass = null;
+
+			if (!IsExpression(out Expression left))
 			{
 				return false;
 			}
@@ -101,17 +252,94 @@ namespace mtran
 			{
 				return false;
 			}
-			if (!IsExpression())
+			if (!IsExpression(out Expression right))
 			{
 				return false;
 			}
 
+			ass = new Assignment()
+			{
+				type = AssignmentType.assignment,
+				left = left,
+				right = right,
+			};
+
 			return true;
 		}
 
-		bool IsFunctionCall()
+		bool IsCompoundStatement(out Assignment ass)
 		{
-			if (!IsName(out string fun))
+			ass = null;
+
+			if (!IsDotOrIndexOrNameOrConst(out Expression left))
+			{
+				return false;
+			}
+			if (!IsCompoundOperation(out AssignmentType type))
+			{
+				return false;
+			}
+			if (!IsSymbol('='))
+			{
+				return false;
+			}
+			if (!IsExpression(out Expression right))
+			{
+				return false;
+			}
+
+			ass = new Assignment()
+			{
+				type = type,
+				left = left,
+				right = right
+			};
+
+			return true;
+		}
+		
+		bool IsCompoundOperation(out AssignmentType type)
+		{
+			int savedIndex = currentTokenIndex;
+			type = AssignmentType.assignment;
+
+			if (IsSymbol('-'))
+			{
+				type = AssignmentType.sub;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsSymbol('+'))
+			{
+				type = AssignmentType.add;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsSymbol('/'))
+			{
+				type = AssignmentType.div;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsSymbol('*'))
+			{
+				type = AssignmentType.mul;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+
+			return false;
+		}
+
+		bool IsFunctionCall(out FunctionCall e)
+		{
+			e = null;
+
+			if (!IsFunction(out Expression func))
 			{
 				return false;
 			}
@@ -119,7 +347,7 @@ namespace mtran
 			{
 				return false;
 			}
-			if (!IsParamList())
+			if (!IsParamList(out List<Expression> list))
 			{
 				return false;
 			}
@@ -128,15 +356,214 @@ namespace mtran
 				return false;
 			}
 
+			e = new FunctionCall()
+			{
+				type = Expressiontype.func,
+				left = func,
+				parameters = list
+			};
+
 			return true;
 		}
 
-		bool IsParamList()
+		bool IsFunction(out Expression e)
 		{
-			if (!IsExpression())
+			int savedIndex = currentTokenIndex;
+			e = null;
+
+			if (IsMethod(out Expression meth))
+			{
+				e = meth;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsName(out string fun))
+			{
+				e = new Expression()
+				{
+					type = Expressiontype.name,
+					value = fun
+				};
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+
+			return false;
+		}
+
+		bool IsMethod(out Expression e)
+		{
+			e = null;
+
+			if (!IsName(out string obj))
 			{
 				return false;
 			}
+			if (!IsSymbol('.'))
+			{
+				return false;
+			}
+			if (!IsName(out string method))
+			{
+				return false;
+			}
+
+			e = new Expression()
+			{
+				type = Expressiontype.dot,
+				left = new Expression()
+				{
+					type = Expressiontype.name,
+					value = obj
+				},
+				right = new Expression()
+				{
+					type = Expressiontype.name,
+					value = method
+				}
+			};
+
+			return true;
+		}
+
+		bool IsIfStatement(out If ifStatement)
+		{
+			ifStatement = null;
+
+			if (!IsKeyword("if"))
+			{
+				return false;
+			}
+			if (!IsExpression(out Expression condition))
+			{
+				return false;
+			}
+			if (!IsSymbol(':'))
+			{
+				return false;
+			}
+
+			ifStatement = new If()
+			{
+				condition = condition
+			};
+
+			return true;
+		}
+
+		bool IsElifStatement(out If ifStatement)
+		{
+			ifStatement = null;
+
+			if (!IsKeyword("elif"))
+			{
+				return false;
+			}
+			if (!IsExpression(out Expression condition))
+			{
+				return false;
+			}
+			if (!IsSymbol(':'))
+			{
+				return false;
+			}
+
+			ifStatement = new If()
+			{
+				condition = condition
+			};
+
+			return true;
+		}
+
+		bool IsElseStatement(out Else elseStatement)
+		{
+			elseStatement = null;
+
+			if (!IsKeyword("else"))
+			{
+				return false;
+			}
+			if (!IsSymbol(':'))
+			{
+				return false;
+			}
+
+			elseStatement = new Else();
+
+			return true;
+		}
+
+		bool IsForStatement(out For forStatement)
+		{
+			forStatement = null;
+
+			if (!IsKeyword("for"))
+			{
+				return false;
+			}
+			if (!IsExpression(out Expression variable))
+			{
+				return false;
+			}
+			if (!IsKeyword("in"))
+			{
+				return false;
+			}
+			if (!IsExpression(out Expression range))
+			{
+				return false;
+			}
+			if (!IsSymbol(':'))
+			{
+				return false;
+			}
+
+			forStatement = new For()
+			{
+				variable = variable,
+				range = range
+			};
+
+			return true;
+		}
+
+		bool IsWhileStatement(out While whileStatement)
+		{
+			whileStatement = null;
+
+			if (!IsKeyword("while"))
+			{
+				return false;
+			}
+			if (!IsExpression(out Expression condition))
+			{
+				return false;
+			}
+			if (!IsSymbol(':'))
+			{
+				return false;
+			}
+
+			whileStatement = new While()
+			{
+				condition = condition
+			};
+
+			return true;
+		}
+
+		bool IsParamList(out List<Expression> list)
+		{
+			list = null;
+
+			if (!IsExpression(out Expression first))
+			{
+				return false;
+			}
+			list = new List<Expression>() { first };
 			while (true)
 			{
 				if (CurrentToken.symbol == ')')
@@ -145,43 +572,59 @@ namespace mtran
 				}
 				if (!IsSymbol(','))
 				{
+					list = null;
+
 					return false;
 				}
-				if (!IsExpression())
+				if (!IsExpression(out Expression following))
 				{
+					list = null;
+
 					return false;
 				}
+				list.Add(following);
 			}
 
 			return true;
 		}
 
-		bool IsExpression()
+		bool IsExpression(out Expression e)
 		{
 			int savedIndex = currentTokenIndex;
+			e = null;
 
-			if (IsName(out string rhs))
+			if (IsExpressionInBraces(out Expression braces))
 			{
+				e = braces;
+
 				return true;
 			}
 			currentTokenIndex = savedIndex;
-			if (IsConst())
+			if (IsFunctionCall(out FunctionCall funcCall))
 			{
+				e = funcCall;
+
 				return true;
 			}
 			currentTokenIndex = savedIndex;
-			if (IsEmptryArray())
+			if (IsBinaryExpression(out Expression binary))
 			{
+				e = binary;
+
 				return true;
 			}
 			currentTokenIndex = savedIndex;
-			if (IsBinaryExpression())
+			if (IsRange(out Expression range))
 			{
+				e = range;
+
 				return true;
 			}
 			currentTokenIndex = savedIndex;
-			if (IsFunctionCall())
+			if (IsDotOrIndexOrNameOrConst(out Expression dotOrIndexOrConst))
 			{
+				e = dotOrIndexOrConst;
+
 				return true;
 			}
 			currentTokenIndex = savedIndex;
@@ -189,17 +632,155 @@ namespace mtran
 			return false;
 		}
 
-		bool IsBinaryExpression()
+		bool IsExpressionInBraces(out Expression e)
 		{
-			if (!IsName(out string lhs))
+			e = null;
+
+			if (!IsSymbol('('))
 			{
 				return false;
 			}
-			if (!IsSymbol('.'))
+			if (!IsExpression(out Expression temp))
 			{
 				return false;
 			}
-			if (!IsName(out string rhs))
+			if (!IsSymbol(')'))
+			{
+				return false;
+			}
+
+			e = temp;
+
+			return true;
+		}
+
+		bool IsBinaryExpression(out Expression binary)
+		{
+			binary = null;
+
+			if (!IsDotOrIndexOrNameOrConst(out Expression left))
+			{
+				return false;
+			}
+			if (!IsBinaryOperation(out Expressiontype type))
+			{
+				return false;
+			}
+			if (!IsExpression(out Expression right))
+			{
+				return false;
+			}
+
+			binary = new Expression()
+			{
+				left = left,
+				type = type,
+				right = right
+			};
+
+			return true;
+		}
+
+		bool IsBinaryOperation(out Expressiontype type)
+		{
+			int savedIndex = currentTokenIndex;
+			type = Expressiontype.none;
+
+			if (IsSymbol('-'))
+			{
+				type = Expressiontype.sub;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsSymbol('+'))
+			{
+				type = Expressiontype.add;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsSymbol('/'))
+			{
+				type = Expressiontype.div;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsSymbol('*'))
+			{
+				type = Expressiontype.mul;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsSymbol('<'))
+			{
+				type = Expressiontype.less;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsSymbol('>'))
+			{
+				type = Expressiontype.greater;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsSymbol('|'))
+			{
+				type = Expressiontype.or;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsSymbol('&'))
+			{
+				type = Expressiontype.and;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsSymbol('^'))
+			{
+				type = Expressiontype.xor;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsLessOrEquals())
+			{
+				type = Expressiontype.lessOrEquals;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsGreaterOrEquals())
+			{
+				type = Expressiontype.greaterOrEquals;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsEquals())
+			{
+				type = Expressiontype.equals;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+
+			return false;
+		}
+
+		bool IsLessOrEquals()
+		{
+			if (!IsSymbol('<'))
+			{
+				return false;
+			}
+			if (!IsSymbol('='))
 			{
 				return false;
 			}
@@ -207,8 +788,205 @@ namespace mtran
 			return true;
 		}
 
-		bool IsEmptryArray()
+		bool IsGreaterOrEquals()
 		{
+			if (!IsSymbol('>'))
+			{
+				return false;
+			}
+			if (!IsSymbol('='))
+			{
+				return false;
+			}
+
+			return true;
+		}
+
+		bool IsEquals()
+		{
+			if (!IsSymbol('='))
+			{
+				return false;
+			}
+			if (!IsSymbol('='))
+			{
+				return false;
+			}
+
+			return true;
+		}
+
+		bool IsIndexExpression(out Expression e)
+		{
+			e = null;
+
+			if (!IsName(out string left))
+			{
+				return false;
+			}
+			if (!IsSymbol('['))
+			{
+				return false;
+			}
+			if (!IsExpression(out Expression right))
+			{
+				return false;
+			}
+			if (!IsSymbol(']'))
+			{
+				return false;
+			}
+
+			e = new Expression()
+			{
+				type = Expressiontype.index,
+				left = new Expression()
+				{
+					type = Expressiontype.name,
+					value = left
+				},
+				right = right
+			};
+
+			return true;
+		}
+
+		bool IsNameOrIndex(out Expression e)
+		{
+			int savedIndex = currentTokenIndex;
+			e = null;
+
+			if (IsIndexExpression(out Expression index))
+			{
+				e = index;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsName(out string name))
+			{
+				e = new Expression()
+				{
+					type = Expressiontype.name,
+					value = name
+				};
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+
+			return false;
+		}
+
+		bool IsDotExpression(out Expression e)
+		{
+			e = null;
+
+			if (!IsNameOrIndex(out Expression left))
+			{
+				return false;
+			}
+			if (!IsSymbol('.'))
+			{
+				return false;
+			}
+			if (!IsDotOrIndexOrNameOrConst(out Expression right))
+			{
+				return false;
+			}
+
+			e = new Expression()
+			{
+				type = Expressiontype.dot,
+				left = left,
+				right = right
+			};
+
+			return true;
+		}
+
+		bool IsDotOrIndexOrNameOrConst(out Expression e)
+		{
+			int savedIndex = currentTokenIndex;
+			e = null;
+
+			if (IsDotExpression(out Expression dot))
+			{
+				e = dot;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsIndexExpression(out Expression index))
+			{
+				e = index;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsName(out string name))
+			{
+				e = new Expression()
+				{
+					type = Expressiontype.name,
+					value = name
+				};
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsConst(out Expression cnst))
+			{
+				e = cnst;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+			if (IsEmptyArray(out Expression arr))
+			{
+				e = arr;
+
+				return true;
+			}
+			currentTokenIndex = savedIndex;
+
+			return false;
+		}
+
+		bool IsRange(out Expression e)
+		{
+			e = null;
+
+			if (!IsKeyword("range"))
+			{
+				return false;
+			}
+			if (!IsSymbol('('))
+			{
+				return false;
+			}
+			if (!IsExpression(out Expression expr))
+			{
+				return false;
+			}
+			if (!IsSymbol(')'))
+			{
+				return false;
+			}
+
+			e = new Expression()
+			{
+				type = Expressiontype.range,
+				left = expr
+			};
+
+			return true;
+		}
+
+		bool IsEmptyArray(out Expression e)
+		{
+			e = null;
+
 			if (!IsSymbol('['))
 			{
 				return false;
@@ -217,6 +995,11 @@ namespace mtran
 			{
 				return false;
 			}
+
+			e = new Expression()
+			{
+				type = Expressiontype.arr
+			};
 
 			return true;
 		}
@@ -235,12 +1018,29 @@ namespace mtran
 			return true;
 		}
 
-		bool IsConst()
+		bool IsConst(out Expression e)
 		{
 			var token = GetCurrentToken;
+			e = null;
 
-			if (token.type == LexemType.NUMBER || token.type == LexemType.STRING)
+			if (token.type == LexemType.NUMBER)
 			{
+				e = new Expression()
+				{
+					type = Expressiontype.number,
+					value = consts[token.constIndex]
+				};
+
+				return true;
+			}
+			else if (token.type == LexemType.STRING)
+			{
+				e = new Expression()
+				{
+					type = Expressiontype.str,
+					value = consts[token.constIndex]
+				};
+
 				return true;
 			}
 
