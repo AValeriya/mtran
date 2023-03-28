@@ -1,93 +1,8 @@
+using System;
 using System.Collections.Generic;
 
 namespace mtran
 {
-	internal class Ast
-	{
-		internal List<Statement> statements;
-	}
-
-	internal class Statement { }
-
-	internal class Import : Statement
-	{
-		internal string module;
-		internal string name;
-	}
-
-	internal class Assignment : Statement
-	{
-		internal Expression left;
-		internal Expression right;
-		internal AssignmentType type;
-	}
-
-	internal class If : Statement
-	{
-		internal Expression condition;
-	}
-
-	internal class Else : Statement { }
-
-	internal class For : Statement
-	{
-		internal Expression variable;
-		internal Expression range;
-	}
-
-	internal class While : Statement
-	{
-		internal Expression condition;
-	}
-
-	internal class Expression : Statement
-	{
-		internal Expressiontype type;
-		internal Expression left;
-		internal Expression right;
-		internal string value;
-	}
-
-	internal class FunctionCall : Expression
-	{
-		internal List<Expression> parameters;
-	}
-
-	internal enum AssignmentType
-	{
-		assignment,
-		add,
-		sub,
-		mul,
-		div,
-	}
-
-	internal enum Expressiontype
-	{
-		none,
-		name,
-		number,
-		str,
-		range,
-		arr,
-		func,
-		sub,
-		add,
-		mul,
-		div,
-		dot,
-		index,
-		less,
-		lessOrEquals,
-		greater,
-		greaterOrEquals,
-		equals,
-		or,
-		and,
-		xor,
-		not,
-	}
-
 	internal class Parser
 	{
 		readonly List<string> names;
@@ -106,6 +21,10 @@ namespace mtran
 			get => tokens[currentTokenIndex++];
 		}
 
+		Ast ast;
+
+		internal Ast Ast => ast;
+
 		internal Parser(Lexer lexer)
 		{
 			names = lexer.Names;
@@ -115,11 +34,10 @@ namespace mtran
 			currentTokenIndex = 0;
 		}
 
-		internal bool Analyse(out Ast ast)
+		internal bool Analyse()
 		{
+			var statements = new List<Statement>();
 			ast = null;
-
-			List<Statement> statements = new List<Statement>();
 
 			while (!IsEnd())
 			{
@@ -140,12 +58,15 @@ namespace mtran
 
 		bool IsStatement(out Statement statement)
 		{
+			var token = CurrentToken;
 			int savedIndex = currentTokenIndex;
+			var indentation = CurrentToken.indentation;
 			statement = null;
 
 			if (IsImport(out Import import))
 			{
 				statement = import;
+				statement.indentation = indentation;
 
 				return true;
 			}
@@ -153,6 +74,7 @@ namespace mtran
 			if (IsAssignmentStatement(out Assignment ass))
 			{
 				statement = ass;
+				statement.indentation = indentation;
 
 				return true;
 			}
@@ -160,6 +82,7 @@ namespace mtran
 			if (IsCompoundStatement(out Assignment compoundAss))
 			{
 				statement = compoundAss;
+				statement.indentation = indentation;
 
 				return true;
 			}
@@ -167,6 +90,7 @@ namespace mtran
 			if (IsFunctionCall(out FunctionCall funcCall))
 			{
 				statement = funcCall;
+				statement.indentation = indentation;
 
 				return true;
 			}
@@ -174,6 +98,7 @@ namespace mtran
 			if (IsIfStatement(out If ifStatement))
 			{
 				statement = ifStatement;
+				statement.indentation = indentation;
 
 				return true;
 			}
@@ -181,6 +106,7 @@ namespace mtran
 			if (IsElseStatement(out Else elseStatement))
 			{
 				statement = elseStatement;
+				statement.indentation = indentation;
 
 				return true;
 			}
@@ -188,6 +114,7 @@ namespace mtran
 			if (IsElifStatement(out If elifStatement))
 			{
 				statement = elifStatement;
+				statement.indentation = indentation;
 
 				return true;
 			}
@@ -195,6 +122,7 @@ namespace mtran
 			if (IsForStatement(out For forStatement))
 			{
 				statement = forStatement;
+				statement.indentation = indentation;
 
 				return true;
 			}
@@ -202,16 +130,19 @@ namespace mtran
 			if (IsWhileStatement(out While whileStatement))
 			{
 				statement = whileStatement;
+				statement.indentation = indentation;
 
 				return true;
 			}
 			currentTokenIndex = savedIndex;
+			ReportError(token, "Statement expected");
 
 			return false;
 		}
 
 		bool IsImport(out Import import)
 		{
+			var token = CurrentToken;
 			import = null;
 
 			if (!IsKeyword("from"))
@@ -220,6 +151,8 @@ namespace mtran
 			}
 			if (!IsName(out string libName))
 			{
+				ReportError(token, "Library name expected in import statement");
+
 				return false;
 			}
 			if (!IsKeyword("import"))
@@ -228,12 +161,14 @@ namespace mtran
 			}
 			if (!IsName(out string funName))
 			{
+				ReportError(token, "Function name expected in import statement");
+
 				return false;
 			}
 
 			import = new Import()
 			{
-				module = libName,
+				library = libName,
 				name = funName
 			};
 
@@ -242,6 +177,7 @@ namespace mtran
 
 		bool IsAssignmentStatement(out Assignment ass)
 		{
+			var token = CurrentToken;
 			ass = null;
 
 			if (!IsExpression(out Expression left))
@@ -254,6 +190,8 @@ namespace mtran
 			}
 			if (!IsExpression(out Expression right))
 			{
+				ReportError(token, "Expression expected after \'=\'");
+
 				return false;
 			}
 
@@ -269,6 +207,7 @@ namespace mtran
 
 		bool IsCompoundStatement(out Assignment ass)
 		{
+			var token = CurrentToken;
 			ass = null;
 
 			if (!IsDotOrIndexOrNameOrConst(out Expression left))
@@ -285,6 +224,8 @@ namespace mtran
 			}
 			if (!IsExpression(out Expression right))
 			{
+				ReportError(token, "Expression expected after \'=\'");
+
 				return false;
 			}
 
@@ -297,7 +238,7 @@ namespace mtran
 
 			return true;
 		}
-		
+
 		bool IsCompoundOperation(out AssignmentType type)
 		{
 			int savedIndex = currentTokenIndex;
@@ -337,6 +278,7 @@ namespace mtran
 
 		bool IsFunctionCall(out FunctionCall e)
 		{
+			var token = CurrentToken;
 			e = null;
 
 			if (!IsFunction(out Expression func))
@@ -353,6 +295,8 @@ namespace mtran
 			}
 			if (!IsSymbol(')'))
 			{
+				ReportError(token, "\')\' expected after condition");
+
 				return false;
 			}
 
@@ -430,6 +374,7 @@ namespace mtran
 
 		bool IsIfStatement(out If ifStatement)
 		{
+			var token = CurrentToken;
 			ifStatement = null;
 
 			if (!IsKeyword("if"))
@@ -438,10 +383,14 @@ namespace mtran
 			}
 			if (!IsExpression(out Expression condition))
 			{
+				ReportError(token, "Condition expected after \"if\"");
+
 				return false;
 			}
 			if (!IsSymbol(':'))
 			{
+				ReportError(token, "Colon expected after condition");
+
 				return false;
 			}
 
@@ -455,6 +404,7 @@ namespace mtran
 
 		bool IsElifStatement(out If ifStatement)
 		{
+			var token = CurrentToken;
 			ifStatement = null;
 
 			if (!IsKeyword("elif"))
@@ -463,16 +413,21 @@ namespace mtran
 			}
 			if (!IsExpression(out Expression condition))
 			{
+				ReportError(token, "Condition expected after \"elif\"");
+
 				return false;
 			}
 			if (!IsSymbol(':'))
 			{
+				ReportError(token, "Colon expected after condition");
+
 				return false;
 			}
 
 			ifStatement = new If()
 			{
-				condition = condition
+				condition = condition,
+				isElif = true
 			};
 
 			return true;
@@ -480,6 +435,7 @@ namespace mtran
 
 		bool IsElseStatement(out Else elseStatement)
 		{
+			var token = CurrentToken;
 			elseStatement = null;
 
 			if (!IsKeyword("else"))
@@ -488,6 +444,8 @@ namespace mtran
 			}
 			if (!IsSymbol(':'))
 			{
+				ReportError(token, "Colon expected in else branch");
+
 				return false;
 			}
 
@@ -498,6 +456,7 @@ namespace mtran
 
 		bool IsForStatement(out For forStatement)
 		{
+			var token = CurrentToken;
 			forStatement = null;
 
 			if (!IsKeyword("for"))
@@ -506,6 +465,8 @@ namespace mtran
 			}
 			if (!IsExpression(out Expression variable))
 			{
+				ReportError(token, "Variable expected after \"for\"");
+
 				return false;
 			}
 			if (!IsKeyword("in"))
@@ -514,10 +475,14 @@ namespace mtran
 			}
 			if (!IsExpression(out Expression range))
 			{
+				ReportError(token, "Range expected after variable");
+
 				return false;
 			}
 			if (!IsSymbol(':'))
 			{
+				ReportError(token, "Colon expected after condition");
+
 				return false;
 			}
 
@@ -532,6 +497,7 @@ namespace mtran
 
 		bool IsWhileStatement(out While whileStatement)
 		{
+			var token = CurrentToken;
 			whileStatement = null;
 
 			if (!IsKeyword("while"))
@@ -540,10 +506,14 @@ namespace mtran
 			}
 			if (!IsExpression(out Expression condition))
 			{
+				ReportError(token, "Variable expected after \"while\"");
+
 				return false;
 			}
 			if (!IsSymbol(':'))
 			{
+				ReportError(token, "Colon expected after condition");
+
 				return false;
 			}
 
@@ -557,6 +527,7 @@ namespace mtran
 
 		bool IsParamList(out List<Expression> list)
 		{
+			var token = CurrentToken;
 			list = null;
 
 			if (!IsExpression(out Expression first))
@@ -573,12 +544,14 @@ namespace mtran
 				if (!IsSymbol(','))
 				{
 					list = null;
+					ReportError(token, "\',\' expected in parameter list");
 
 					return false;
 				}
 				if (!IsExpression(out Expression following))
 				{
 					list = null;
+					ReportError(token, "Expression expected in parameter list");
 
 					return false;
 				}
@@ -634,6 +607,7 @@ namespace mtran
 
 		bool IsExpressionInBraces(out Expression e)
 		{
+			var token = CurrentToken;
 			e = null;
 
 			if (!IsSymbol('('))
@@ -646,6 +620,8 @@ namespace mtran
 			}
 			if (!IsSymbol(')'))
 			{
+				ReportError(token, "\')\' expected after expression");
+
 				return false;
 			}
 
@@ -818,6 +794,7 @@ namespace mtran
 
 		bool IsIndexExpression(out Expression e)
 		{
+			var token = CurrentToken;
 			e = null;
 
 			if (!IsName(out string left))
@@ -834,6 +811,8 @@ namespace mtran
 			}
 			if (!IsSymbol(']'))
 			{
+				ReportError(token, "\']\' expected after expression");
+
 				return false;
 			}
 
@@ -955,6 +934,7 @@ namespace mtran
 
 		bool IsRange(out Expression e)
 		{
+			var token = CurrentToken;
 			e = null;
 
 			if (!IsKeyword("range"))
@@ -971,6 +951,8 @@ namespace mtran
 			}
 			if (!IsSymbol(')'))
 			{
+				ReportError(token, "\')\' expected after expression");
+
 				return false;
 			}
 
@@ -985,6 +967,7 @@ namespace mtran
 
 		bool IsEmptyArray(out Expression e)
 		{
+			var token = CurrentToken;
 			e = null;
 
 			if (!IsSymbol('['))
@@ -993,6 +976,8 @@ namespace mtran
 			}
 			if (!IsSymbol(']'))
 			{
+				ReportError(token, "\']\' expected after expression");
+
 				return false;
 			}
 
@@ -1072,6 +1057,23 @@ namespace mtran
 		bool IsEnd()
 		{
 			return CurrentToken.type == LexemType.END;
+		}
+
+		void ReportError(Token token, string error)
+		{
+			Console.Error.WriteLine($"Syntax error: {error} in line {token.line + 1}");
+		}
+
+		internal void PrintInfo()
+		{
+			if (ast != null)
+			{
+				Console.WriteLine(ast);
+			}
+			else
+			{
+				Console.WriteLine("Ast was not generated!");
+			}
 		}
 	}
 }
