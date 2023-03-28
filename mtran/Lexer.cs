@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 
@@ -6,12 +6,27 @@ namespace mtran
 {
 	internal class Lexer
 	{
-		const string specialSymbols = "(){}[]<>,.:;!@%|&^*-+=/?";
-		internal readonly static List<string> keywords = new List<string>() { "if", "else", "while", "for", "import", "from" };
+		const int indentSpacesCount = 4;
+		const string specialSymbols = "(){}[]<>,.:;!@%|&^*-+=/?#";
+		internal readonly static List<string> keywords = new List<string>()
+		{
+			"if",
+			"eilf",
+			"else",
+			"while",
+			"for",
+			"in",
+			"range",
+			"import",
+			"from"
+		};
 
-		List<string> names;
-		List<string> consts;
-		List<Token> tokens;
+		readonly List<string> names;
+		readonly List<string> consts;
+		readonly List<Token> tokens;
+
+		int currentLine = 0;
+		int currentRow = -1;
 
 		LexemType currentTokenType;
 
@@ -31,6 +46,7 @@ namespace mtran
 			string temp = "";
 			char stringOpening = ' ';
 			char currentSymbol;
+			int indentation = -1;
 
 			currentTokenType = LexemType.NONE;
 
@@ -45,7 +61,7 @@ namespace mtran
 
 						return false;
 					}
-					if (!AddConst(LexemType.STRING, temp))
+					if (!AddConst(LexemType.STRING, temp, indentation))
 					{
 						return false;
 					}
@@ -65,11 +81,11 @@ namespace mtran
 				switch (currentTokenType)
 				{
 					case LexemType.NAME:
-						AddName(temp);
+						AddName(temp, indentation);
 						temp = "";
 						break;
 					case LexemType.NUMBER:
-						if (!AddConst(LexemType.NUMBER, temp))
+						if (!AddConst(LexemType.NUMBER, temp, indentation))
 						{
 							return false;
 						}
@@ -94,7 +110,7 @@ namespace mtran
 						temp += currentSymbol;
 						break;
 					case LexemType.SPECIAL:
-						tokens.Add(new Token(this, LexemType.SPECIAL, currentSymbol));
+						tokens.Add(new Token(this, LexemType.SPECIAL, currentLine, currentRow, symbol: currentSymbol, indentation: indentation));
 						break;
 					case LexemType.STRING:
 						currentTokenType = LexemType.STRING;
@@ -111,16 +127,16 @@ namespace mtran
 				switch (currentTokenType)
 				{
 					case LexemType.NAME:
-						AddName(temp);
+						AddName(temp, indentation);
 						break;
 					case LexemType.NUMBER:
-						if (!AddConst(LexemType.NUMBER, temp))
+						if (!AddConst(LexemType.NUMBER, temp, indentation))
 						{
 							return false;
 						}
 						break;
 					case LexemType.STRING:
-						ReportError($"String did not end!:{temp}");
+						ReportError($"String did not end: {temp}");
 
 						return false;
 					default:
@@ -133,6 +149,26 @@ namespace mtran
 			for (int i = 0; i < text.Length; i++)
 			{
 				currentSymbol = text[i];
+				if (currentSymbol == '\n')
+				{
+					if (currentTokenType == LexemType.STRING)
+					{
+						ReportError($"String literal end ({stringOpening}) expected but code line ended");
+
+						return false;
+					}
+					currentLine++;
+					currentRow = -1;
+					indentation = -1;
+				}
+				else
+				{
+					currentRow++;
+					if (currentSymbol != ' ' && indentation == -1)
+					{
+						indentation = currentRow / indentSpacesCount;
+					}
+				}
 				if (currentTokenType == LexemType.STRING)
 				{
 					if (!CheckForString())
@@ -174,17 +210,17 @@ namespace mtran
 				return false;
 			}
 
-			tokens.Add(new Token(this, LexemType.END));
+			tokens.Add(new Token(this, LexemType.END, currentLine, currentRow));
 
 			return true;
 		}
 
-		void AddName(string name)
+		void AddName(string name, int indentation)
 		{
 			int keywordIndex = keywords.IndexOf(name);
 			if (keywordIndex != -1)
 			{
-				tokens.Add(new Token(this, LexemType.KEYWORD, keywordIndex: keywordIndex));
+				tokens.Add(new Token(this, LexemType.KEYWORD, currentLine, currentRow, indentation: indentation, keywordIndex: keywordIndex));
 			}
 			else
 			{
@@ -192,22 +228,22 @@ namespace mtran
 				if (nameIndex == -1)
 				{
 					names.Add(name);
-					tokens.Add(new Token(this, LexemType.NAME, nameIndex: names.Count - 1));
+					tokens.Add(new Token(this, LexemType.NAME, currentLine, currentRow, indentation: indentation, nameIndex: names.Count - 1));
 				}
 				else
 				{
-					tokens.Add(new Token(this, LexemType.NAME, nameIndex: nameIndex));
+					tokens.Add(new Token(this, LexemType.NAME, currentLine, currentRow, indentation: indentation, nameIndex: nameIndex));
 				}
 			}
 		}
 
-		bool AddConst(LexemType type, string value)
+		bool AddConst(LexemType type, string value, int indentation)
 		{
 			if (type == LexemType.NUMBER)
 			{
-				if (!double.TryParse(value, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out double d))
+				if (!double.TryParse(value, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out double _))
 				{
-					if (!long.TryParse(value, out long l))
+					if (!long.TryParse(value, out long _))
 					{
 						ReportError($"Invalid numeric value: {value}");
 
@@ -219,11 +255,11 @@ namespace mtran
 			if (index == -1)
 			{
 				consts.Add(value);
-				tokens.Add(new Token(this, type, constIndex: consts.Count - 1));
+				tokens.Add(new Token(this, type, currentLine, currentRow, indentation: indentation, constIndex: consts.Count - 1));
 			}
 			else
 			{
-				tokens.Add(new Token(this, type, constIndex: index));
+				tokens.Add(new Token(this, type, currentLine, currentRow, indentation: indentation, constIndex: index));
 			}
 
 			return true;
@@ -231,7 +267,7 @@ namespace mtran
 
 		void ReportError(string error)
 		{
-			Console.Error.WriteLine($"Error: {error}");
+			Console.Error.WriteLine($"Lexic error: {error} in {currentLine + 1}:{currentRow}");
 		}
 
 		LexemType GetTokenType(char c)
