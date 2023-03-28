@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 
 namespace mtran
@@ -9,8 +9,7 @@ namespace mtran
 		{
 			Environment.CurrentDirectory += "/files";
 
-			//PrintResults("input.txt");
-			PrintResults("test.txt");
+			PrintResults("input.txt");
 
 			Console.ReadKey();
 		}
@@ -27,6 +26,7 @@ namespace mtran
 				var parser = new Parser(lexer);
 				if (parser.Analyse())
 				{
+					parser.PrintInfo();
 					Console.WriteLine("Great success!");
 				}
 				else
