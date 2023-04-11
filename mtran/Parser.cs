@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace mtran
@@ -166,7 +166,7 @@ namespace mtran
 				return false;
 			}
 
-			import = new Import()
+			import = new Import(token.line, token.row)
 			{
 				library = libName,
 				name = funName
@@ -195,9 +195,8 @@ namespace mtran
 				return false;
 			}
 
-			ass = new Assignment()
+			ass = new Assignment(token.line, token.row)
 			{
-				type = AssignmentType.assignment,
 				left = left,
 				right = right,
 			};
@@ -229,7 +228,7 @@ namespace mtran
 				return false;
 			}
 
-			ass = new Assignment()
+			ass = new Assignment(token.line, token.row)
 			{
 				type = type,
 				left = left,
@@ -242,32 +241,32 @@ namespace mtran
 		bool IsCompoundOperation(out AssignmentType type)
 		{
 			int savedIndex = currentTokenIndex;
-			type = AssignmentType.assignment;
+			type = AssignmentType.ASSIGNMENT_TYPE_ASSIGNMENT;
 
 			if (IsSymbol('-'))
 			{
-				type = AssignmentType.sub;
+				type = AssignmentType.ASSIGNMENT_TYPE_SUB;
 
 				return true;
 			}
 			currentTokenIndex = savedIndex;
 			if (IsSymbol('+'))
 			{
-				type = AssignmentType.add;
+				type = AssignmentType.ASSIGNMENT_TYPE_ADD;
 
 				return true;
 			}
 			currentTokenIndex = savedIndex;
 			if (IsSymbol('/'))
 			{
-				type = AssignmentType.div;
+				type = AssignmentType.ASSIGNMENT_TYPE_DIV;
 
 				return true;
 			}
 			currentTokenIndex = savedIndex;
 			if (IsSymbol('*'))
 			{
-				type = AssignmentType.mul;
+				type = AssignmentType.ASSIGNMENT_TYPE_MUL;
 
 				return true;
 			}
@@ -300,9 +299,8 @@ namespace mtran
 				return false;
 			}
 
-			e = new FunctionCall()
+			e = new FunctionCall(token.line, token.row)
 			{
-				type = Expressiontype.func,
 				left = func,
 				parameters = list
 			};
@@ -322,12 +320,13 @@ namespace mtran
 				return true;
 			}
 			currentTokenIndex = savedIndex;
+			var token = CurrentToken;
 			if (IsName(out string fun))
 			{
-				e = new Expression()
+				e = new Expression(token.line, token.row)
 				{
-					type = Expressiontype.name,
-					value = fun
+					value = fun,
+					expressionType = Expressiontype.EXPRESSION_TYPE_NAME,
 				};
 
 				return true;
@@ -339,6 +338,7 @@ namespace mtran
 
 		bool IsMethod(out Expression e)
 		{
+			var token = CurrentToken;
 			e = null;
 
 			if (!IsName(out string obj))
@@ -354,17 +354,17 @@ namespace mtran
 				return false;
 			}
 
-			e = new Expression()
+			e = new Expression(token.line, token.row)
 			{
-				type = Expressiontype.dot,
-				left = new Expression()
+				expressionType = Expressiontype.EXPRESSION_TYPE_DOT,
+				left = new Expression(token.line, token.row)
 				{
-					type = Expressiontype.name,
+					expressionType = Expressiontype.EXPRESSION_TYPE_NAME,
 					value = obj
 				},
-				right = new Expression()
+				right = new Expression(token.line, token.row)
 				{
-					type = Expressiontype.name,
+					expressionType = Expressiontype.EXPRESSION_TYPE_NAME,
 					value = method
 				}
 			};
@@ -394,7 +394,7 @@ namespace mtran
 				return false;
 			}
 
-			ifStatement = new If()
+			ifStatement = new If(token.line, token.row)
 			{
 				condition = condition
 			};
@@ -424,7 +424,7 @@ namespace mtran
 				return false;
 			}
 
-			ifStatement = new If()
+			ifStatement = new If(token.line, token.row)
 			{
 				condition = condition,
 				isElif = true
@@ -449,7 +449,7 @@ namespace mtran
 				return false;
 			}
 
-			elseStatement = new Else();
+			elseStatement = new Else(token.line, token.row);
 
 			return true;
 		}
@@ -486,7 +486,7 @@ namespace mtran
 				return false;
 			}
 
-			forStatement = new For()
+			forStatement = new For(token.line, token.row)
 			{
 				variable = variable,
 				range = range
@@ -517,7 +517,7 @@ namespace mtran
 				return false;
 			}
 
-			whileStatement = new While()
+			whileStatement = new While(token.line, token.row)
 			{
 				condition = condition
 			};
@@ -647,10 +647,10 @@ namespace mtran
 				return false;
 			}
 
-			binary = new Expression()
+			binary = new Expression(left.line, left.row)
 			{
 				left = left,
-				type = type,
+				expressionType = type,
 				right = right
 			};
 
@@ -660,88 +660,88 @@ namespace mtran
 		bool IsBinaryOperation(out Expressiontype type)
 		{
 			int savedIndex = currentTokenIndex;
-			type = Expressiontype.none;
+			type = Expressiontype.EXPRESSION_TYPE_NONE;
 
 			if (IsSymbol('-'))
 			{
-				type = Expressiontype.sub;
+				type = Expressiontype.EXPRESSION_TYPE_SUB;
 
 				return true;
 			}
 			currentTokenIndex = savedIndex;
 			if (IsSymbol('+'))
 			{
-				type = Expressiontype.add;
+				type = Expressiontype.EXPRESSION_TYPE_ADD;
 
 				return true;
 			}
 			currentTokenIndex = savedIndex;
 			if (IsSymbol('/'))
 			{
-				type = Expressiontype.div;
+				type = Expressiontype.EXPRESSION_TYPE_DIV;
 
 				return true;
 			}
 			currentTokenIndex = savedIndex;
 			if (IsSymbol('*'))
 			{
-				type = Expressiontype.mul;
+				type = Expressiontype.EXPRESSION_TYPE_MUL;
 
 				return true;
 			}
 			currentTokenIndex = savedIndex;
 			if (IsSymbol('<'))
 			{
-				type = Expressiontype.less;
+				type = Expressiontype.EXPRESSION_TYPE_LESS;
 
 				return true;
 			}
 			currentTokenIndex = savedIndex;
 			if (IsSymbol('>'))
 			{
-				type = Expressiontype.greater;
+				type = Expressiontype.EXPRESSION_TYPE_GREATER;
 
 				return true;
 			}
 			currentTokenIndex = savedIndex;
 			if (IsSymbol('|'))
 			{
-				type = Expressiontype.or;
+				type = Expressiontype.EXPRESSION_TYPE_OR;
 
 				return true;
 			}
 			currentTokenIndex = savedIndex;
 			if (IsSymbol('&'))
 			{
-				type = Expressiontype.and;
+				type = Expressiontype.EXPRESSION_TYPE_AND;
 
 				return true;
 			}
 			currentTokenIndex = savedIndex;
 			if (IsSymbol('^'))
 			{
-				type = Expressiontype.xor;
+				type = Expressiontype.EXPRESSION_TYPE_XOR;
 
 				return true;
 			}
 			currentTokenIndex = savedIndex;
 			if (IsLessOrEquals())
 			{
-				type = Expressiontype.lessOrEquals;
+				type = Expressiontype.EXPRESSION_TYPE_LESS_OR_EQUALS;
 
 				return true;
 			}
 			currentTokenIndex = savedIndex;
 			if (IsGreaterOrEquals())
 			{
-				type = Expressiontype.greaterOrEquals;
+				type = Expressiontype.EXPRESSION_TYPE_GREATER_OR_EQUALS;
 
 				return true;
 			}
 			currentTokenIndex = savedIndex;
 			if (IsEquals())
 			{
-				type = Expressiontype.equals;
+				type = Expressiontype.EXPRESSION_TYPE_EQUALS;
 
 				return true;
 			}
@@ -816,12 +816,12 @@ namespace mtran
 				return false;
 			}
 
-			e = new Expression()
+			e = new Expression(token.line, token.row)
 			{
-				type = Expressiontype.index,
-				left = new Expression()
+				expressionType = Expressiontype.EXPRESSION_TYPE_INDEX,
+				left = new Expression(token.line, token.row)
 				{
-					type = Expressiontype.name,
+					expressionType = Expressiontype.EXPRESSION_TYPE_NAME,
 					value = left
 				},
 				right = right
@@ -842,11 +842,12 @@ namespace mtran
 				return true;
 			}
 			currentTokenIndex = savedIndex;
+			var token = CurrentToken;
 			if (IsName(out string name))
 			{
-				e = new Expression()
+				e = new Expression(token.line, token.row)
 				{
-					type = Expressiontype.name,
+					expressionType = Expressiontype.EXPRESSION_TYPE_NAME,
 					value = name
 				};
 
@@ -874,9 +875,8 @@ namespace mtran
 				return false;
 			}
 
-			e = new Expression()
+			e = new Expression(left.line, left.row)
 			{
-				type = Expressiontype.dot,
 				left = left,
 				right = right
 			};
@@ -903,11 +903,12 @@ namespace mtran
 				return true;
 			}
 			currentTokenIndex = savedIndex;
+			var token = CurrentToken;
 			if (IsName(out string name))
 			{
-				e = new Expression()
+				e = new Expression(token.line, token.row)
 				{
-					type = Expressiontype.name,
+					expressionType = Expressiontype.EXPRESSION_TYPE_NAME,
 					value = name
 				};
 
@@ -956,9 +957,9 @@ namespace mtran
 				return false;
 			}
 
-			e = new Expression()
+			e = new Expression(token.line, token.row)
 			{
-				type = Expressiontype.range,
+				expressionType = Expressiontype.EXPRESSION_TYPE_RANGE,
 				left = expr
 			};
 
@@ -981,9 +982,9 @@ namespace mtran
 				return false;
 			}
 
-			e = new Expression()
+			e = new Expression(token.line, token.row)
 			{
-				type = Expressiontype.arr
+				expressionType = Expressiontype.EXPRESSION_TYPE_ARR
 			};
 
 			return true;
@@ -1010,9 +1011,9 @@ namespace mtran
 
 			if (token.type == LexemType.NUMBER)
 			{
-				e = new Expression()
+				e = new Expression(token.line, token.row)
 				{
-					type = Expressiontype.number,
+					expressionType = Expressiontype.EXPRESSION_TYPE_NUMBER,
 					value = consts[token.constIndex]
 				};
 
@@ -1020,9 +1021,9 @@ namespace mtran
 			}
 			else if (token.type == LexemType.STRING)
 			{
-				e = new Expression()
+				e = new Expression(token.line, token.row)
 				{
-					type = Expressiontype.str,
+					expressionType = Expressiontype.EXPRESSION_TYPE_STR,
 					value = consts[token.constIndex]
 				};
 

@@ -1,4 +1,4 @@
-namespace mtran
+﻿namespace mtran
 {
 	internal class Token
 	{

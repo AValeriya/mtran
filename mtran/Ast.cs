@@ -2,6 +2,53 @@
 
 namespace mtran
 {
+	internal enum StatementType
+	{
+		STATEMENT_TYPE_IMPORT,
+		STATEMENT_TYPE_ASSIGNMENT,
+		STATEMENT_TYPE_IF,
+		STATEMENT_TYPE_ELSE,
+		STATEMENT_TYPE_FOR,
+		STATEMENT_TYPE_WHILE,
+		STATEMENT_TYPE_EXPRESSION,
+		STATEMENT_TYPE_FUNCTION_CALL,
+	}
+
+	internal enum AssignmentType
+	{
+		ASSIGNMENT_TYPE_ASSIGNMENT,
+		ASSIGNMENT_TYPE_ADD,
+		ASSIGNMENT_TYPE_SUB,
+		ASSIGNMENT_TYPE_MUL,
+		ASSIGNMENT_TYPE_DIV,
+	}
+
+	internal enum Expressiontype
+	{
+		EXPRESSION_TYPE_NONE,
+		EXPRESSION_TYPE_NAME,
+		EXPRESSION_TYPE_NUMBER,
+		EXPRESSION_TYPE_STR,
+		EXPRESSION_TYPE_RANGE,
+		EXPRESSION_TYPE_ARR,
+		EXPRESSION_TYPE_FUNC,
+		EXPRESSION_TYPE_SUB,
+		EXPRESSION_TYPE_ADD,
+		EXPRESSION_TYPE_MUL,
+		EXPRESSION_TYPE_DIV,
+		EXPRESSION_TYPE_DOT,
+		EXPRESSION_TYPE_INDEX,
+		EXPRESSION_TYPE_LESS,
+		EXPRESSION_TYPE_LESS_OR_EQUALS,
+		EXPRESSION_TYPE_GREATER,
+		EXPRESSION_TYPE_GREATER_OR_EQUALS,
+		EXPRESSION_TYPE_EQUALS,
+		EXPRESSION_TYPE_OR,
+		EXPRESSION_TYPE_AND,
+		EXPRESSION_TYPE_XOR,
+		EXPRESSION_TYPE_NOT,
+	}
+
 	internal class Ast
 	{
 		internal List<Statement> statements;
@@ -25,13 +72,30 @@ namespace mtran
 
 	internal class Statement
 	{
+		internal int line;
+		internal int row;
 		internal int indentation;
+		internal StatementType statementType;
+
+		public Statement(int line, int row, StatementType statementType)
+		{
+			this.line = line;
+			this.row = row;
+			this.statementType = statementType;
+		}
+
+		public override string ToString()
+		{
+			return $"{statementType.ToString()}({line}:{row})";
+		}
 	}
 
 	internal class Import : Statement
 	{
 		internal string library;
 		internal string name;
+
+		public Import(int line, int row) : base(line, row, StatementType.STATEMENT_TYPE_IMPORT) { }
 
 		public override string ToString()
 		{
@@ -45,19 +109,21 @@ namespace mtran
 		internal Expression right;
 		internal AssignmentType type;
 
+		public Assignment(int line, int row) : base(line, row, StatementType.STATEMENT_TYPE_ASSIGNMENT) { }
+
 		public override string ToString()
 		{
 			switch (type)
 			{
-				case AssignmentType.assignment:
+				case AssignmentType.ASSIGNMENT_TYPE_ASSIGNMENT:
 					return $"Assigning {left} = {right}";
-				case AssignmentType.add:
+				case AssignmentType.ASSIGNMENT_TYPE_ADD:
 					return $"Assigning {left} += {right}";
-				case AssignmentType.sub:
+				case AssignmentType.ASSIGNMENT_TYPE_SUB:
 					return $"Assigning {left} -= {right}";
-				case AssignmentType.mul:
+				case AssignmentType.ASSIGNMENT_TYPE_MUL:
 					return $"Assigning {left} *= {right}";
-				case AssignmentType.div:
+				case AssignmentType.ASSIGNMENT_TYPE_DIV:
 					return $"Assigning {left} /= {right}";
 				default:
 					return "???error???";
@@ -70,6 +136,8 @@ namespace mtran
 		internal Expression condition;
 		internal bool isElif = false;
 
+		public If(int line, int row) : base(line, row, StatementType.STATEMENT_TYPE_IF) { }
+
 		public override string ToString()
 		{
 			return $"If statement: {condition}";
@@ -78,6 +146,8 @@ namespace mtran
 
 	internal class Else : Statement
 	{
+		public Else(int line, int row) : base(line, row, StatementType.STATEMENT_TYPE_ELSE) { }
+
 		public override string ToString()
 		{
 			return $"Else branch:";
@@ -89,6 +159,8 @@ namespace mtran
 		internal Expression variable;
 		internal Expression range;
 
+		public For(int line, int row) : base(line, row, StatementType.STATEMENT_TYPE_FOR) { }
+
 		public override string ToString()
 		{
 			return $"For statement: {variable} in {range}";
@@ -99,6 +171,8 @@ namespace mtran
 	{
 		internal Expression condition;
 
+		public While(int line, int row) : base(line, row, StatementType.STATEMENT_TYPE_WHILE) { }
+
 		public override string ToString()
 		{
 			return $"while statement: {condition}";
@@ -107,57 +181,59 @@ namespace mtran
 
 	internal class Expression : Statement
 	{
-		internal Expressiontype type;
+		internal Expressiontype expressionType;
 		internal Expression left;
 		internal Expression right;
 		internal string value;
 
+		public Expression(int line, int row, StatementType statementType = StatementType.STATEMENT_TYPE_EXPRESSION) : base(line, row, statementType) { }
+
 		public override string ToString()
 		{
-			if (type == Expressiontype.sub && right == null)
+			if (expressionType == Expressiontype.EXPRESSION_TYPE_SUB && right == null)
 			{
 				return $"-{left}";
 			}
 
-			switch (type)
+			switch (expressionType)
 			{
-				case Expressiontype.name:
+				case Expressiontype.EXPRESSION_TYPE_NAME:
 					return $"{value}";
-				case Expressiontype.number:
+				case Expressiontype.EXPRESSION_TYPE_NUMBER:
 					return $"{value}";
-				case Expressiontype.str:
+				case Expressiontype.EXPRESSION_TYPE_STR:
 					return $"\'{value}\'";
-				case Expressiontype.range:
+				case Expressiontype.EXPRESSION_TYPE_RANGE:
 					return $"range({left})";
-				case Expressiontype.arr:
+				case Expressiontype.EXPRESSION_TYPE_ARR:
 					return $"[]"; // TODO
-				case Expressiontype.sub:
+				case Expressiontype.EXPRESSION_TYPE_SUB:
 					return $"{left} - {right}";
-				case Expressiontype.add:
+				case Expressiontype.EXPRESSION_TYPE_ADD:
 					return $"{left} + {right}";
-				case Expressiontype.mul:
+				case Expressiontype.EXPRESSION_TYPE_MUL:
 					return $"{left} * {right}";
-				case Expressiontype.div:
+				case Expressiontype.EXPRESSION_TYPE_DIV:
 					return $"{left} / {right}";
-				case Expressiontype.dot:
+				case Expressiontype.EXPRESSION_TYPE_DOT:
 					return $"{left}.{right}";
-				case Expressiontype.index:
+				case Expressiontype.EXPRESSION_TYPE_INDEX:
 					return $"{left}[{right}]";
-				case Expressiontype.less:
+				case Expressiontype.EXPRESSION_TYPE_LESS:
 					return $"{left} < {right}";
-				case Expressiontype.lessOrEquals:
+				case Expressiontype.EXPRESSION_TYPE_LESS_OR_EQUALS:
 					return $"{left} <= {right}";
-				case Expressiontype.greater:
+				case Expressiontype.EXPRESSION_TYPE_GREATER:
 					return $"{left} > {right}";
-				case Expressiontype.greaterOrEquals:
+				case Expressiontype.EXPRESSION_TYPE_GREATER_OR_EQUALS:
 					return $"{left} >= {right}";
-				case Expressiontype.equals:
+				case Expressiontype.EXPRESSION_TYPE_EQUALS:
 					return $"{left} == {right}";
-				case Expressiontype.or:
+				case Expressiontype.EXPRESSION_TYPE_OR:
 					return $"{left} | {right}";
-				case Expressiontype.and:
+				case Expressiontype.EXPRESSION_TYPE_AND:
 					return $"{left} & {right}";
-				case Expressiontype.xor:
+				case Expressiontype.EXPRESSION_TYPE_XOR:
 					return $"{left} ^ {right}";
 				default:
 					return "???error???";
@@ -168,6 +244,8 @@ namespace mtran
 	internal class FunctionCall : Expression
 	{
 		internal List<Expression> parameters;
+
+		public FunctionCall(int line, int row) : base(line, row, StatementType.STATEMENT_TYPE_FUNCTION_CALL) { }
 
 		public override string ToString()
 		{
@@ -185,40 +263,5 @@ namespace mtran
 
 			return $"calling function {left} with ({args})";
 		}
-	}
-
-	internal enum AssignmentType
-	{
-		assignment,
-		add,
-		sub,
-		mul,
-		div,
-	}
-
-	internal enum Expressiontype
-	{
-		none,
-		name,
-		number,
-		str,
-		range,
-		arr,
-		func,
-		sub,
-		add,
-		mul,
-		div,
-		dot,
-		index,
-		less,
-		lessOrEquals,
-		greater,
-		greaterOrEquals,
-		equals,
-		or,
-		and,
-		xor,
-		not,
 	}
 }
