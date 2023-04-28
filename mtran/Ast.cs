@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace mtran
 {
@@ -107,13 +107,13 @@ namespace mtran
 	{
 		internal Expression left;
 		internal Expression right;
-		internal AssignmentType type;
+		internal AssignmentType assignmentType;
 
 		public Assignment(int line, int row) : base(line, row, StatementType.STATEMENT_TYPE_ASSIGNMENT) { }
 
 		public override string ToString()
 		{
-			switch (type)
+			switch (assignmentType)
 			{
 				case AssignmentType.ASSIGNMENT_TYPE_ASSIGNMENT:
 					return $"Assigning {left} = {right}";
@@ -156,14 +156,14 @@ namespace mtran
 
 	internal class For : Statement
 	{
-		internal Expression variable;
+		internal Expression expression;
 		internal Expression range;
 
 		public For(int line, int row) : base(line, row, StatementType.STATEMENT_TYPE_FOR) { }
 
 		public override string ToString()
 		{
-			return $"For statement: {variable} in {range}";
+			return $"For statement: {expression} in {range}";
 		}
 	}
 
