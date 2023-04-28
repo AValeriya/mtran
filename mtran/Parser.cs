@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace mtran
@@ -230,7 +230,7 @@ namespace mtran
 
 			ass = new Assignment(token.line, token.row)
 			{
-				type = type,
+				assignmentType = type,
 				left = left,
 				right = right
 			};
@@ -488,7 +488,7 @@ namespace mtran
 
 			forStatement = new For(token.line, token.row)
 			{
-				variable = variable,
+				expression = variable,
 				range = range
 			};
 
