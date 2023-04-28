@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 
 namespace mtran
@@ -32,7 +32,15 @@ namespace mtran
 					var semanticAnalyser = new SemanticAnalyser(parser.Ast);
 					if (semanticAnalyser.Analyse())
 					{
-						Console.WriteLine("Great success!");
+						var interpreter = new Interpreter(parser.Ast);
+						if (interpreter.Run())
+						{
+							Console.WriteLine("Great success!");
+						}
+						else
+						{
+							Console.Error.WriteLine("Error occured in interpreter.");
+						}
 					}
 					else
 					{
