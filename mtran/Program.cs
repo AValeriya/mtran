@@ -9,7 +9,8 @@ namespace mtran
 		{
 			Environment.CurrentDirectory += "/files";
 
-			PrintResults("input.txt");
+			//PrintResults("input.txt");
+			PrintResults("test.txt");
 
 			Console.ReadKey();
 		}
