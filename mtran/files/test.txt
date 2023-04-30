@@ -1,5 +1,44 @@
-from random import randint
-
-N = 10
 a = []
-print(a)
+b = []
+
+a[0] = 4
+a[1] = 4
+a[2] = 2
+a[3] = 1
+
+b[0] = 8
+b[1] = 8
+b[2] = 6
+b[3] = 5
+
+c = a + b
+print(c)
+
+i = 0
+while i < len(c):
+    j = i + 1
+    while j < len(c):
+        if c[i] > c[j]:
+            temp = c[i]
+            c[i] = c[j]
+            c[j] = temp
+        j += 1
+    i += 1
+print(c)
+
+temp = []
+
+i = 0
+while i < len(c):
+    x = c[i]
+    r = 1
+    j = 0
+    while j < len(temp):
+        if temp[j] == x:
+            r = 0
+        j += 1
+    if r:
+        temp += x
+    i += 1
+
+print('Updated list after removing duplicates = ' + temp)
